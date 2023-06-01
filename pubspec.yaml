@@ -33,6 +33,20 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Add the dependency for the Firebase Core Flutter SDK
+  firebase_core: ^2.13.0
+
+  # Add the dependency for the FlutterFire plugin for Google Analytics
+  firebase_analytics: ^10.4.1
+  # Add the dependencies for the Firebase products you want to use in your app
+  # For example, to use Firebase Authentication and Cloud Firestore
+  cloud_firestore: ^4.7.1
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  firebase_messaging: ^14.6.1
+
+  firebase_remote_config: ^4.2.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -49,6 +63,11 @@ dependencies:
   easy_geofencing: ^0.2.0
   flutter_map: ^0.13.0
   # geofence: ^0.3.0
+
+dependency_overrides:
+    flutter_map:
+        git:
+            url: https://github.com/fleaflet/flutter_map.git
 
 dev_dependencies:
   flutter_test:
