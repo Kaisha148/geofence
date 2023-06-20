@@ -59,10 +59,13 @@ dependencies:
   gap: ^2.0.2
   oktoast: ^3.1.5
   # geolocator: ^9.0.2
-  geolocator: ^7.1.1
-  easy_geofencing: ^0.2.0
+  # geolocator: ^7.1.1
+  geolocator: ^8.0.1
+  # easy_geofencing: ^0.2.0
   flutter_map: ^0.13.0
+  # flutter_map: ^0.14.1
   # geofence: ^0.3.0
+  # google_maps_flutter: ^2.2.0
 
 dependency_overrides:
     flutter_map:
