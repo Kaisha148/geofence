@@ -63,6 +63,7 @@ dependencies:
   geolocator: ^8.0.1
   # easy_geofencing: ^0.2.0
   flutter_map: ^0.13.0
+  location: ^4.4.0
   # flutter_map: ^0.14.1
   # geofence: ^0.3.0
   # google_maps_flutter: ^2.2.0
