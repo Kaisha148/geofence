@@ -1,7 +1,7 @@
 // import 'dart:html';
 // import 'dart:io';今後これを使おうものならFlutterのバージョンアップは避けられない
 import 'dart:async';
-import 'package:flutter/cupertino.dart';
+//import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -56,7 +56,12 @@ class _MapExampleState extends State<MapExample> {
   List<double> hankeiIreruBasho = [];//半径を端末に保存する場所
 
   double sliderValue = 50.0;
-  bool showWindow = false;
+
+  final MapController mapController = MapController();//地図動作用
+  
+  bool deleteCheck = false;//円削除実施チェック
+  late LatLng deletePoint;//削除円地点
+  late double deleteRadius;//削除円半径
 
   @override
   void initState() {
@@ -72,11 +77,11 @@ class _MapExampleState extends State<MapExample> {
   Future<void> checkLocationPermission() async {
     PermissionStatus status = await Permission.locationWhenInUse.status;
     if (status.isDenied || status.isPermanentlyDenied) {
-      showDialog(//でてった報告
+      showDialog(//位置情報未許可
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text('位置情報未許可'),
+            title: const Text('位置情報未許可'),
             content: const Text('設定してください'),
             actions: [
               TextButton(
@@ -153,12 +158,12 @@ class _MapExampleState extends State<MapExample> {
               checkHereIsDanger = true;//危険区域内で何度もメッセージ出ないように
               return;
             }
-        }else if(circleNumber==i&&checkHereIsDanger){//true 危険区域にいた場合
-            showDialog(//でてった報告
+          }else if(circleNumber==i&&checkHereIsDanger){//true 危険区域にいた場合
+            showDialog(//円から出た報告
               context: context,
               builder: (BuildContext context) {
                 return AlertDialog(
-                  title: Text('報告'),
+                  title: const Text('報告'),
                   content: const Text('危険区域から出ました'),
                   actions: [
                     TextButton(
@@ -184,7 +189,7 @@ class _MapExampleState extends State<MapExample> {
   }
 
   //円を追加するメソッド
-  Future<void> handleMapTap(TapPosition event,LatLng latlng) async {
+  Future<void> handleMapTap(TapPosition event,LatLng tapPoint) async {
     if(isButtonRed){//円が赤の時だけ円を追加できる
       showDialog(
         context: context,
@@ -192,7 +197,7 @@ class _MapExampleState extends State<MapExample> {
           return StatefulBuilder(
             builder: (BuildContext context, setState) {
               return AlertDialog(
-                  title: Text('円の大きさは？'),
+                  title: const Text('円の大きさは？'),
                   content: const Text('円の大きさは？'),
                   actions: [
                     Slider(
@@ -208,13 +213,13 @@ class _MapExampleState extends State<MapExample> {
                     ),
                   Text(
                     '円の大きさ: ${sliderValue.toStringAsFixed(1)}''m',
-                    style: TextStyle(fontSize: 16),
+                    style: const TextStyle(fontSize: 16),
                   ),
                   TextButton(
                     onPressed: () {
                       setState(() {
-                        tappedPoint = latlng;
-                        _dangerCirclesList.add(LatLng(latlng.latitude, latlng.longitude));
+                        tappedPoint = tapPoint;
+                        _dangerCirclesList.add(LatLng(tapPoint.latitude, tapPoint.longitude));
                       });
                       dangerCircleRadiusList.add(sliderValue);
                       savePoints(_dangerCirclesList, 1);
@@ -237,33 +242,50 @@ class _MapExampleState extends State<MapExample> {
       );
     }else{
       for(int i = 0;i < _dangerCirclesList.length; i++){
-        LatLng kakunun = _dangerCirclesList[i];
-        double kyori = distanceBetween(latlng.latitude,latlng.longitude,kakunun.latitude,kakunun.longitude);
-        if(kyori <= dangerCircleRadiusList[i]){
-          await showDialog(
+        LatLng checkPoint = _dangerCirclesList[i];
+        double kyori = distanceBetween(tapPoint.latitude,tapPoint.longitude,checkPoint.latitude,checkPoint.longitude);
+        if(kyori <= dangerCircleRadiusList[i]){          
+          deleteCheck = true;
+          mapController.move(LatLng(checkPoint.latitude-0.0006, checkPoint.longitude), mapController.camera.zoom);
+          deletePoint = LatLng(checkPoint.latitude, checkPoint.longitude);
+          deleteRadius = dangerCircleRadiusList[i];
+          await showModalBottomSheet(
+            backgroundColor: Colors.white.withOpacity(0.3),
+            barrierColor: Colors.white.withOpacity(0),
             context: context,
             builder: (BuildContext context) {
-              return AlertDialog(
-                title: Text(kakunun.toString()+'に円を見つけました。'),
-                content: const Text('消しますか？'),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _dangerCirclesList.removeAt(i);
-                        dangerCircleRadiusList.removeAt(i);
-                      });
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text('消す'),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text('消さない'),
-                  ),
-                ],
+              return Container(
+                height: 100,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Text(checkPoint.toString()+'に円を見つけました。'),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children:[
+                        ElevatedButton(
+                          onPressed: (){
+                            setState(() {
+                              _dangerCirclesList.removeAt(i);
+                              dangerCircleRadiusList.removeAt(i);
+                            });
+                            deleteCheck = false;
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text('消す'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            deleteCheck = false;
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text('消さない'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               );
             },
           );
@@ -371,9 +393,10 @@ class _MapExampleState extends State<MapExample> {
     }
   }
 
+  //距離計算メソッド
   double distanceBetween(double latitude1, double longitude1, double latitude2, double longitude2) {
-    final toRadians = (double degree) => degree * pi / 180;
-    final double r = 6378137.0; // 地球の半径
+    toRadians(double degree) => degree * pi / 180;
+    const double r = 6378137.0; // 地球の半径
     final double f1 = toRadians(latitude1);
     final double f2 = toRadians(latitude2);
     final double l1 = toRadians(longitude1);
@@ -392,6 +415,7 @@ class _MapExampleState extends State<MapExample> {
       ),
       body: GestureDetector(       
         child: FlutterMap(
+          mapController: mapController,
           options: MapOptions(
             initialCenter: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
             initialZoom: 15.0,
@@ -409,11 +433,9 @@ class _MapExampleState extends State<MapExample> {
               markers: saveLatlngList!.map((LatLng point) {
                 return Marker(
                   point: point,
-                  builder: (ctx) => Container(
-                    child: const Icon(
-                      Icons.location_on,
-                      color: Colors.purple,
-                    ),
+                  builder: (ctx) => const Icon(
+                    Icons.location_on,
+                    color: Colors.purple,
                   ),
                 );
               }).toList(),
@@ -422,11 +444,9 @@ class _MapExampleState extends State<MapExample> {
               markers: _stayPointsList.map((LatLng point) {
                 return Marker(
                   point: point,
-                  builder: (ctx) => Container(
-                    child: const Icon(
-                      Icons.location_on,
-                      color: Colors.red,
-                    ),
+                  builder: (ctx) => const Icon(
+                    Icons.location_on,
+                    color: Colors.red,
                   ),
                 );
               }).toList(),
@@ -443,6 +463,19 @@ class _MapExampleState extends State<MapExample> {
                 ),
               ]
             ),
+            //消す円
+            if(deleteCheck)
+            CircleLayer(
+              circles:[
+                CircleMarker(
+                  point: deletePoint,
+                  radius: deleteRadius,
+                  color: Colors.brown.withOpacity(0.5),
+                    useRadiusInMeter: true,
+                ),
+              ]
+            ),
+            //現在位置のセット
             if(unitePoints >0)
             PolylineLayer(
               polylines: [
@@ -453,6 +486,7 @@ class _MapExampleState extends State<MapExample> {
                 )
               ],
             ),
+            //再起動前にいた位置のセット
             if(saveLatlngList != null)
             PolylineLayer(
               polylines: [
@@ -466,6 +500,7 @@ class _MapExampleState extends State<MapExample> {
           ],
         ),
       ),
+      //ボタン
       floatingActionButton: FloatingActionButton(
         onPressed: toggleButtonColor,
         child: GestureDetector(
