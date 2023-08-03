@@ -1,18 +1,13 @@
-// import 'dart:html';
-// import 'dart:io';今後これを使おうものならFlutterのバージョンアップは避けられない
 import 'dart:async';
-//import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/plugin_api.dart';
-//追加
 import 'package:location/location.dart' as setarea;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'dart:math';
 
 void main() {
@@ -45,23 +40,20 @@ class _MapExampleState extends State<MapExample> {
   int countEnterDanger = 0;//危険区域に入った回数
   int unitePoints = -1;//点と点をくっつける
   List<LatLng> saveLatlngList = [];//位置を端末に保存する場所
-  //add
   setarea.LocationData? currentLocation;//現在緯度経度
   LatLng? tappedPoint;//タップした場所
   bool isButtonRed = true;//ボタン押したかどうか
   List<double> dangerCircleRadiusList = [];//危険半径リスト
   int circleNumber = -1;//危険区域入場回数格納場所。０と正の数でなければなんでもいい。
-
   List<LatLng> circleIreruBasho = [];//円を端末に保存する場所
   List<double> hankeiIreruBasho = [];//半径を端末に保存する場所
-
-  double sliderValue = 50.0;
-
+  double sliderValue = 50.0;//円半径の初期値
   final MapController mapController = MapController();//地図動作用
-  
   bool deleteCheck = false;//円削除実施チェック
   late LatLng deletePoint;//削除円地点
   late double deleteRadius;//削除円半径
+  bool isMoveMode = false;//ボタン押したかどうか
+  int escapeNum = -1;//端末内保存リストの配列番号格納用変数（初期値に意味なし）
 
   @override
   void initState() {
@@ -244,12 +236,15 @@ class _MapExampleState extends State<MapExample> {
       for(int i = 0;i < _dangerCirclesList.length; i++){
         LatLng checkPoint = _dangerCirclesList[i];
         double kyori = distanceBetween(tapPoint.latitude,tapPoint.longitude,checkPoint.latitude,checkPoint.longitude);
-        if(kyori <= dangerCircleRadiusList[i]){          
+        if(kyori <= dangerCircleRadiusList[i]&&!isMoveMode){          
           deleteCheck = true;
           mapController.move(LatLng(checkPoint.latitude-0.0006, checkPoint.longitude), mapController.camera.zoom);
           deletePoint = LatLng(checkPoint.latitude, checkPoint.longitude);
           deleteRadius = dangerCircleRadiusList[i];
-          await showModalBottomSheet(
+          //await showModalBottomSheet(
+          final movePoint = await showModalBottomSheet(
+            isDismissible: false,
+            enableDrag: false,
             backgroundColor: Colors.white.withOpacity(0.3),
             barrierColor: Colors.white.withOpacity(0),
             context: context,
@@ -259,7 +254,6 @@ class _MapExampleState extends State<MapExample> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    Text(checkPoint.toString()+'に円を見つけました。'),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -271,16 +265,23 @@ class _MapExampleState extends State<MapExample> {
                               dangerCircleRadiusList.removeAt(i);
                             });
                             deleteCheck = false;
-                            Navigator.of(context).pop();
+                            Navigator.of(context).pop(false);
                           },
                           child: const Text('消す'),
                         ),
                         ElevatedButton(
                           onPressed: () {
                             deleteCheck = false;
-                            Navigator.of(context).pop();
+                            Navigator.of(context).pop(false);
                           },
-                          child: const Text('消さない'),
+                          child: const Text('キャンセル'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            deleteCheck = false;
+                            Navigator.of(context).pop(true);
+                          },
+                          child: const Text('移動する'),
                         ),
                       ],
                     ),
@@ -289,9 +290,53 @@ class _MapExampleState extends State<MapExample> {
               );
             },
           );
+          if (movePoint == true) {
+            escapeNum = i;
+            isMoveMode = true;
+          }
         }
       }
     }
+  }
+
+  void _showMoveLocationBottomSheet(TapPosition event,LatLng tapPoint) async {
+    await showModalBottomSheet(
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.white.withOpacity(0.3),
+      barrierColor: Colors.white.withOpacity(0),
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 100,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children:[
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _dangerCirclesList[escapeNum] = tapPoint;
+                      isMoveMode = false;
+                    },
+                    child: const Text('移動する'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      isMoveMode = false;
+                    },
+                    child: const Text('キャンセル'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   //右下ボタンのチェック
@@ -366,11 +411,11 @@ class _MapExampleState extends State<MapExample> {
       List<String> splitCircle = ["",""];
       List<String>? circleListToString = prefs.getStringList('savedCircle');
       List<String>? radiusListToString = prefs.getStringList('savedRadius');      
-
       double latitude;
       double longitude;
       LatLng circlePoint;
       double radiusSize;
+
       for(var i = 0; i <= circleListToString!.length; i++) {
         circleInfo = circleListToString[i].toString();
         circleInfo = circleInfo.replaceAll("LatLng(latitude:", "");
@@ -419,8 +464,13 @@ class _MapExampleState extends State<MapExample> {
           options: MapOptions(
             initialCenter: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
             initialZoom: 15.0,
-            onTap: (dynamic tapPosition, LatLng latLng) {
-              handleMapTap(tapPosition,latLng);
+            //onTap: (dynamic tapPosition, LatLng latLng) {
+              onLongPress: (dynamic tapPosition, LatLng latLng) {
+              if(isMoveMode){
+                _showMoveLocationBottomSheet(tapPosition,latLng);
+              }else{
+                handleMapTap(tapPosition,latLng);
+              }
             }
           ),
           children: [
