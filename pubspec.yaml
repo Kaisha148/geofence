@@ -55,7 +55,7 @@ dependencies:
   flutter_geofence: ^0.4.4
   flutter_hooks: ^0.18.3
   flutter_local_notifications: ^9.5.3+1
-  permission_handler: ^9.0.2
+  permission_handler: ^8.1.6
   gap: ^2.0.2
   oktoast: ^3.1.5
   # geolocator: ^9.0.2
@@ -63,7 +63,8 @@ dependencies:
   geolocator: ^8.0.1
   # easy_geofencing: ^0.2.0
   flutter_map: ^0.13.0
-  location: ^4.4.0
+  # location: ^4.4.0
+  location: ^5.0.0-dev.8
   # flutter_map: ^0.14.1
   # geofence: ^0.3.0
   # google_maps_flutter: ^2.2.0
