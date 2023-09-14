@@ -54,6 +54,8 @@ class _MapExampleState extends State<MapExample> {
   late double deleteRadius;//削除円半径
   bool isMoveMode = false;//ボタン押したかどうか
   int escapeNum = -1;//端末内保存リストの配列番号格納用変数（初期値に意味なし）
+  bool lastCheck = false;//円移動先地点
+  late LatLng moveCheck;//円移動先確認判定
 
   @override
   void initState() {
@@ -263,6 +265,8 @@ class _MapExampleState extends State<MapExample> {
                             setState(() {
                               _dangerCirclesList.removeAt(i);
                               dangerCircleRadiusList.removeAt(i);
+                              savePoints(_dangerCirclesList, 1);
+                              saveRadius(dangerCircleRadiusList);
                             });
                             deleteCheck = false;
                             Navigator.of(context).pop(false);
@@ -278,7 +282,7 @@ class _MapExampleState extends State<MapExample> {
                         ),
                         ElevatedButton(
                           onPressed: () {
-                            deleteCheck = false;
+                            //deleteCheck = false;
                             Navigator.of(context).pop(true);
                           },
                           child: const Text('移動する'),
@@ -300,6 +304,8 @@ class _MapExampleState extends State<MapExample> {
   }
 
   void _showMoveLocationBottomSheet(TapPosition event,LatLng tapPoint) async {
+    lastCheck = true;
+    moveCheck = tapPoint;
     await showModalBottomSheet(
       isDismissible: false,
       enableDrag: false,
@@ -319,7 +325,10 @@ class _MapExampleState extends State<MapExample> {
                     onPressed: () {
                       Navigator.of(context).pop();
                       _dangerCirclesList[escapeNum] = tapPoint;
+                      savePoints(_dangerCirclesList, 1);
                       isMoveMode = false;
+                      deleteCheck = false;
+                      moveCheck = const LatLng(0, 0);
                     },
                     child: const Text('移動する'),
                   ),
@@ -327,6 +336,8 @@ class _MapExampleState extends State<MapExample> {
                     onPressed: () {
                       Navigator.of(context).pop();
                       isMoveMode = false;
+                      deleteCheck = false;
+                      moveCheck = const LatLng(0, 0);
                     },
                     child: const Text('キャンセル'),
                   ),
@@ -464,8 +475,8 @@ class _MapExampleState extends State<MapExample> {
           options: MapOptions(
             initialCenter: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
             initialZoom: 15.0,
-            //onTap: (dynamic tapPosition, LatLng latLng) {
-              onLongPress: (dynamic tapPosition, LatLng latLng) {
+            onTap: (dynamic tapPosition, LatLng latLng) {
+              //onLongPress: (dynamic tapPosition, LatLng latLng) {
               if(isMoveMode){
                 _showMoveLocationBottomSheet(tapPosition,latLng);
               }else{
@@ -525,6 +536,17 @@ class _MapExampleState extends State<MapExample> {
                 ),
               ]
             ),
+            if(lastCheck)
+            CircleLayer(
+              circles:[
+                CircleMarker(
+                  point: moveCheck,
+                  radius: deleteRadius,
+                  color: Colors.purple.withOpacity(0.5),
+                    useRadiusInMeter: true,
+                ),
+              ]
+            ),
             //現在位置のセット
             if(unitePoints >0)
             PolylineLayer(
@@ -546,6 +568,46 @@ class _MapExampleState extends State<MapExample> {
                   strokeWidth: 10.0,
                 )
               ],
+            ),
+            if(isMoveMode)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 50,
+                color: Colors.red,
+              ),
+            ),
+            if(isMoveMode)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 50,
+                color: Colors.red,
+              ),
+            ),
+            if(isMoveMode)
+            Positioned(
+              top: 50,
+              left: 0,
+              bottom: 50,
+              child: Container(
+                width: 50,
+                color: Colors.red,
+              ),
+            ),
+            if(isMoveMode)
+            Positioned(
+              top: 50,
+              right: 0,
+              bottom: 50,
+              child: Container(
+                width: 50,
+                color: Colors.red,
+              ),
             ),
           ],
         ),
